@@ -1,448 +1,79 @@
-
-<!-- ============================================================
-  ANGAVU MES — front end (paste into a NEW Apps Script HTML file
-  named exactly: MesIndex)
-  Requires MES_Code.gs, MES_SchemaSetup.gs (run once), and the
-  small Code.gs patch described in chat (USERS role + doGet
-  branch on ?app=mes).
-============================================================ -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<base target="_top">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Angavu MES</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1B6CA8">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-  body { background: #EEF2F5; padding: 10px; }
-  .wrap { max-width: 720px; margin: 0 auto; }
-  header { background: linear-gradient(100deg, #1B6CA8 70%, #2E5A27 100%); border-radius: 10px 10px 0 0; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; }
-  header h1 { color: #FFF8E7; font-size: 17px; }
-  header p { color: #D4A017; font-size: 11px; }
-  #who { color: #EAF2E3; font-size: 11px; text-align: right; }
-  #logout { background: none; border: 1px solid #D4A017; color: #D4A017; font-size: 10px; padding: 3px 8px; border-radius: 10px; cursor: pointer; margin-top: 3px; }
-  .bar { display: flex; height: 5px; }
-  .bar span:nth-child(1){flex:1;background:#D4A017;} .bar span:nth-child(2){flex:1;background:#2E5A27;} .bar span:nth-child(3){flex:1;background:#1B6CA8;}
-  .tabs { display: flex; background: #FFFFFF; border: 1px solid #D9E2E8; border-top: none; }
-  .tab { flex: 1; padding: 11px; font-size: 13px; font-weight: 700; border: none; cursor: pointer; background: #FFFFFF; color: #888780; border-bottom: 3px solid transparent; }
-  .tab.on { color: #1B6CA8; border-bottom-color: #1B6CA8; }
-  main { background: #FFFFFF; border: 1px solid #D9E2E8; border-top: none; padding: 14px; min-height: 300px; }
-  h2 { font-size: 13px; color: #1B6CA8; margin: 12px 0 6px; text-transform: uppercase; letter-spacing: .5px; }
-  h2:first-child { margin-top: 0; }
-  label { font-size: 11px; color: #5F5E5A; display: block; margin-bottom: 2px; }
-  input, select { width: 100%; padding: 9px; font-size: 14px; border: 1px solid #CCC7B5; border-radius: 6px; background: #FFF; margin-bottom: 8px; }
-  input:focus, select:focus { outline: 2px solid #1B6CA8; }
-  .btn { padding: 12px 16px; font-size: 14px; font-weight: 700; border: none; border-radius: 8px; cursor: pointer; color: #FFF; }
-  .btn.primary { background: #1B6CA8; }
-  .btn.green { background: #2E5A27; }
-  .btn.gold { background: #D4A017; color: #412402; }
-  .btn.red { background: #A32D2D; }
-  .btn.outline { background: #FFF; color: #1B6CA8; border: 2px solid #1B6CA8; }
-  .btn:disabled { opacity: .5; }
-  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .card { border: 1px solid #D9E2E8; border-left: 5px solid #1B6CA8; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-  .card.status-Reserved { border-left-color: #D4A017; }
-  .card.status-InProgress { border-left-color: #2E5A27; }
-  .card.status-Completed { border-left-color: #888780; background: #FAFAF8; }
-  .card.status-Cancelled { border-left-color: #A32D2D; opacity: .6; }
-  .card b { font-size: 14px; color: #2C2C2A; }
-  .chip { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
-  .chip.Reserved { background: #FAEEDA; color: #854F0B; }
-  .chip.InProgress { background: #EAF3DE; color: #3B6D11; }
-  .chip.Completed { background: #EEE; color: #666; }
-  .chip.Cancelled { background: #FCEBEB; color: #A32D2D; }
-  .chip.exc { background: #FCEBEB; color: #A32D2D; }
-  .meta { font-size: 11px; color: #6B6B60; margin-top: 4px; }
-  table.bom { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-  table.bom th { background: #EEF2F5; padding: 5px; text-align: left; }
-  table.bom td { padding: 5px; border-top: 1px solid #EEE; }
-  table.bom tr.short td { background: #FCEBEB; }
-  #msg { margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 13px; display: none; }
-  #msg.ok { display: block; background: #EAF3DE; color: #3B6D11; border: 1px solid #A9CB7E; }
-  #msg.err { display: block; background: #FCEBEB; color: #A32D2D; border: 1px solid #E8A9A9; }
-  #login { position: fixed; inset: 0; z-index: 100; background: linear-gradient(160deg, #1B6CA8 60%, #2E5A27 130%); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
-  #login.off { display: none; }
-  #login .mark { width: 78px; height: 78px; border-radius: 50%; background: #FFF8E7; color: #1B6CA8; font-size: 34px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
-  #login h1 { color: #FFF8E7; font-size: 22px; }
-  #login .tag { color: #D4A017; font-size: 12px; margin-bottom: 24px; }
-  #login .box { width: 100%; max-width: 300px; }
-  #login select, #login input { padding: 13px; font-size: 16px; border-radius: 8px; border: none; margin-bottom: 10px; text-align: center; }
-  #login input { letter-spacing: 8px; font-weight: 700; }
-  #login button { width: 100%; padding: 15px; font-size: 16px; font-weight: 700; border: none; border-radius: 8px; background: #D4A017; color: #412402; cursor: pointer; }
-  #login-err { color: #FFC7C7; font-size: 13px; min-height: 20px; margin-top: 10px; }
-  #overlay { display: none; position: fixed; inset: 0; background: rgba(20,30,40,.6); z-index: 60; overflow: auto; padding: 16px; }
-  #overlay.on { display: block; }
-  .sheet { background: #FFF; max-width: 420px; margin: 0 auto; border-radius: 10px; padding: 18px; }
-  #qrbox { display: flex; justify-content: center; margin: 10px 0; }
-  .close { display: block; width: 100%; margin-top: 10px; padding: 12px; background: #FFF; border: 2px solid #1B6CA8; color: #1B6CA8; border-radius: 8px; font-weight: 700; }
-  .shortage-row { display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; border-bottom: 1px solid #EEE; }
-  .badge-risk { color: #A32D2D; font-weight: 700; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #1B6CA8; color: #FFF8E7; font-family: Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px;
+  }
+  img.logo { width: 108px; border-radius: 24px; margin-bottom: 16px; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .tag { font-size: 13px; color: #D4A017; margin-bottom: 30px; }
+  .btn {
+    display: block; width: 100%; max-width: 320px; margin: 0 auto 12px;
+    padding: 17px; border-radius: 10px; border: none; cursor: pointer;
+    font-size: 17px; font-weight: 700; text-decoration: none;
+  }
+  .go { background: #D4A017; color: #412402; }
+  .install { background: transparent; color: #FFF8E7; border: 2px solid #FFF8E7; font-size: 14px; padding: 12px; display: none; }
+  .bar { display: flex; height: 6px; width: 100%; max-width: 320px; margin: 26px auto 0; border-radius: 3px; overflow: hidden; }
+  .bar span:nth-child(1){flex:1;background:#D4A017;} .bar span:nth-child(2){flex:1;background:#2E5A27;} .bar span:nth-child(3){flex:1;background:#FFF8E7;}
+  .foot { margin-top: 26px; font-size: 11px; color: #BEDCF0; }
+  #offline { display: none; margin-top: 14px; font-size: 13px; background: #FAEEDA; color: #854F0B; padding: 10px 14px; border-radius: 8px; }
 </style>
 </head>
 <body>
 
-<div id="login">
-  <div class="mark">M</div>
+  <img class="logo" src="icon-192.png" alt="Angavu MES">
   <h1>Angavu MES</h1>
   <div class="tag">Sparkle &amp; Dazzle &middot; production floor</div>
-  <div class="box">
-    <select id="login-name"><option value="">Loading users&hellip;</option></select>
-    <input id="login-pin" type="password" inputmode="numeric" maxlength="6" placeholder="PIN">
-    <button id="login-btn">Log in</button>
-    <div id="login-err"></div>
-  </div>
-</div>
 
-<div class="wrap" id="app">
-  <header>
-    <div><h1>Angavu MES</h1><p>Sparkle &amp; Dazzle &middot; production floor</p></div>
-    <div id="who"><span id="who-name"></span><br><button id="logout">Log out</button></div>
-  </header>
+  <!-- ===== PASTE YOUR /exec URL BELOW, keep the ?app=mes ===== -->
+  <a class="btn go" id="open"
+     href="PASTE-YOUR-NEW-STANDALONE-MES-EXEC-URL-HERE">
+     Open MES &rarr;</a>
+
+  <button class="btn install" id="installBtn">&#11015; Install this app on your device</button>
+
+  <div id="offline"><b>No internet.</b> The MES needs data/Wi-Fi to plan and log batches.</div>
+
   <div class="bar"><span></span><span></span><span></span></div>
-  <div class="tabs" id="tabs"></div>
-
-  <main>
-    <div id="view-plan" style="display:none">
-      <h2>Create work order</h2>
-      <label for="p-sku">SKU</label>
-      <select id="p-sku"></select>
-      <label for="p-kg">Batch size (kg)</label>
-      <input id="p-kg" type="number" value="100" min="10" step="10">
-      <label for="p-operator">Assign to (optional)</label>
-      <input id="p-operator" placeholder="Operator name">
-      <label for="p-notes">Notes</label>
-      <input id="p-notes" placeholder="e.g. priority order for Naivasha">
-      <button class="btn primary" id="p-check">Check BOM &amp; availability</button>
-      <div id="p-bom"></div>
-      <div class="btnrow" id="p-actions" style="display:none">
-        <button class="btn green" id="p-create">Create &amp; reserve</button>
-        <button class="btn gold" id="p-force" style="display:none">Create anyway (shortage)</button>
-      </div>
-
-      <h2 style="margin-top:20px">Material shortages</h2>
-      <div id="p-shortages"></div>
-    </div>
-
-    <div id="view-orders">
-      <h2>Work orders</h2>
-      <button class="btn outline" id="refresh-wo" style="margin-bottom:10px">&#8635; Refresh</button>
-      <div id="wo-list"></div>
-    </div>
-
-    <div id="msg"></div>
-  </main>
-  <footer style="background:#EAF2E3;border-radius:0 0 10px 10px;padding:8px 14px;font-size:10px;color:#3B6D11;border:1px solid #D9E2E8;border-top:none;">
-    Angavu Solutions Ltd &middot; every action here writes straight to the ERP sheet
-  </footer>
-</div>
-
-<!-- Work order detail / log / QR / PDF -->
-<div id="overlay">
-  <div class="sheet" id="detail-sheet"></div>
-</div>
+  <div class="foot">Angavu Solutions Ltd &middot; PO Box 8, Miharati &middot; 0700 767 686</div>
 
 <script>
-  var CFG = null;
-  var TOKEN = sessionStorage.getItem('mes_tok') || '';
-  var USERNAME = sessionStorage.getItem('mes_name') || '';
-  var ROLE = sessionStorage.getItem('mes_role') || '';
-  var EXEC_URL = (function(){ var u = new URL(window.location.href); u.search=''; return u.toString(); })(); // this app's own root URL — no ?app=mes needed anymore
-
-  function showLock(err) { document.getElementById('login').classList.remove('off'); document.getElementById('login-err').textContent = err || ''; }
-  function hideLock() {
-    document.getElementById('login').classList.add('off');
-    document.getElementById('who-name').textContent = USERNAME + ' (' + ROLE + ')';
-  }
-  function showMsg(cls, text) { var m = document.getElementById('msg'); m.className = cls; m.textContent = text; }
-
-  document.getElementById('login-btn').onclick = function () {
-    var name = document.getElementById('login-name').value;
-    var pin = document.getElementById('login-pin').value.trim();
-    if (!name || !pin) { document.getElementById('login-err').textContent = 'Choose your name and enter your PIN.'; return; }
-    var btn = this; btn.disabled = true; btn.textContent = 'Checking\u2026';
-    google.script.run
-      .withSuccessHandler(function (res) {
-        TOKEN = res.token; USERNAME = res.name;
-        sessionStorage.setItem('mes_tok', TOKEN); sessionStorage.setItem('mes_name', USERNAME);
-        btn.disabled = false; btn.textContent = 'Log in';
-        afterLogin();
-      })
-      .withFailureHandler(function (err) {
-        btn.disabled = false; btn.textContent = 'Log in';
-        document.getElementById('login-err').textContent = err.message;
-      })
-      .login(name, pin);
-  };
-  document.getElementById('login-pin').addEventListener('keyup', function (e) { if (e.key === 'Enter') document.getElementById('login-btn').click(); });
-  document.getElementById('logout').onclick = function () {
-    google.script.run.logout(TOKEN);
-    TOKEN = ''; sessionStorage.removeItem('mes_tok'); sessionStorage.removeItem('mes_name'); sessionStorage.removeItem('mes_role');
-    showLock('');
-  };
-
-  function authFail(err) {
-    if (String(err.message).indexOf('log in again') !== -1 || String(err.message).indexOf('Session expired') !== -1) {
-      TOKEN = ''; sessionStorage.removeItem('mes_tok'); showLock('Session expired \u2014 log in again.');
-    } else showMsg('err', err.message);
-  }
-
-  function afterLogin() {
-    google.script.run.withSuccessHandler(function (info) {
-      ROLE = info.role; sessionStorage.setItem('mes_role', ROLE);
-      hideLock();
-      buildTabs();
-      loadConfig();
-      var params = new URLSearchParams(window.location.search);
-      if (params.get('wo')) openDetail(params.get('wo'));
-    }).withFailureHandler(function () { showLock(''); }).mesWhoAmI(TOKEN);
-  }
-
-  function buildTabs() {
-    var t = document.getElementById('tabs'); t.innerHTML = '';
-    var canPlan = ROLE.indexOf('Planner') !== -1 || ROLE.indexOf('Admin') !== -1;
-    if (canPlan) {
-      var b1 = document.createElement('button'); b1.className = 'tab'; b1.textContent = '\ud83d\udccb Plan';
-      b1.onclick = function () { showView('plan'); }; t.appendChild(b1);
-    }
-    var b2 = document.createElement('button'); b2.className = 'tab on'; b2.textContent = '\ud83c\udfed Work orders';
-    b2.onclick = function () { showView('orders'); }; t.appendChild(b2);
-    showView('orders');
-  }
-  function showView(name) {
-    document.getElementById('view-plan').style.display = name === 'plan' ? 'block' : 'none';
-    document.getElementById('view-orders').style.display = name === 'orders' ? 'block' : 'none';
-    Array.prototype.forEach.call(document.getElementById('tabs').children, function (b) { b.classList.remove('on'); });
-    var idx = name === 'plan' ? 0 : (document.getElementById('tabs').children.length - 1);
-    document.getElementById('tabs').children[idx].classList.add('on');
-    if (name === 'orders') loadWorkOrders();
-    if (name === 'plan') loadShortages();
-  }
-
-  function loadConfig() {
-    google.script.run.withSuccessHandler(function (skus) {
-      var s = document.getElementById('p-sku'); s.innerHTML = '';
-      skus.forEach(function (sku) { var o = document.createElement('option'); o.value = sku; o.textContent = sku; s.appendChild(o); });
-    }).withFailureHandler(authFail).getSKUs(TOKEN);
-  }
-
-  /* ---------- Planning ---------- */
-  document.getElementById('p-check').onclick = function () {
-    var sku = document.getElementById('p-sku').value, kg = document.getElementById('p-kg').value;
-    google.script.run.withSuccessHandler(function (comps) {
-      renderBOM(comps);
-      document.getElementById('p-actions').style.display = 'flex';
-      document.getElementById('p-force').style.display = comps.some(function (c) { return c.short; }) ? 'inline-block' : 'none';
-    }).withFailureHandler(authFail).explodeBOM(TOKEN, sku, kg);
-  };
-
-  function renderBOM(comps) {
-    var h = '<table class="bom"><tr><th>Component</th><th>Needed</th><th>Available</th></tr>';
-    comps.forEach(function (c) {
-      h += '<tr class="' + (c.short ? 'short' : '') + '"><td>' + c.name + '</td><td>' + c.needed + ' ' + c.unit + '</td><td>' + c.available + ' ' + c.unit + '</td></tr>';
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  var deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferredPrompt = e;
+    document.getElementById('installBtn').style.display = 'block';
+  });
+  document.getElementById('installBtn').addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function () {
+      deferredPrompt = null; document.getElementById('installBtn').style.display = 'none';
     });
-    h += '</table>';
-    document.getElementById('p-bom').innerHTML = h;
+  });
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    document.getElementById('installBtn').style.display = 'none';
   }
-
-  function doPlan(force) {
-    var req = {
-      sku: document.getElementById('p-sku').value,
-      batchSizeKg: document.getElementById('p-kg').value,
-      assignedOperator: document.getElementById('p-operator').value.trim(),
-      notes: document.getElementById('p-notes').value.trim(),
-      force: force
-    };
-    google.script.run.withSuccessHandler(function (res) {
-      if (!res.ok) { renderBOM(res.shortages); document.getElementById('p-force').style.display = 'inline-block'; showMsg('err', 'Shortages found \u2014 review, or create anyway.'); return; }
-      showMsg('ok', '\u2713 Work order ' + res.workOrderId + ' created and materials reserved.');
-      document.getElementById('p-bom').innerHTML = '';
-      document.getElementById('p-actions').style.display = 'none';
-      loadShortages(); showView('orders');
-    }).withFailureHandler(authFail).planWorkOrder(TOKEN, req);
+  function conn() {
+    var off = !navigator.onLine;
+    document.getElementById('offline').style.display = off ? 'block' : 'none';
+    document.getElementById('open').style.opacity = off ? 0.5 : 1;
   }
-  document.getElementById('p-create').onclick = function () { doPlan(false); };
-  document.getElementById('p-force').onclick = function () { doPlan(true); };
-
-  function loadShortages() {
-    google.script.run.withSuccessHandler(function (list) {
-      var el = document.getElementById('p-shortages');
-      if (!list.length) { el.innerHTML = '<div class="meta">\u2713 No shortages</div>'; return; }
-      el.innerHTML = list.map(function (s) {
-        return '<div class="shortage-row"><span>' + s.material + '</span><span class="badge-risk">' + s.available + ' avail. (reorder ' + s.reorder + ')</span></div>';
-      }).join('');
-    }).withFailureHandler(authFail).getShortages(TOKEN);
-  }
-
-  /* ---------- Work order list ---------- */
-  document.getElementById('refresh-wo').onclick = loadWorkOrders;
-  function loadWorkOrders() {
-    google.script.run.withSuccessHandler(function (list) {
-      var el = document.getElementById('wo-list');
-      if (!list.length) { el.innerHTML = '<div class="meta">No work orders yet.</div>'; return; }
-      el.innerHTML = list.map(function (w) {
-        return '<div class="card status-' + w.status + '" onclick="openDetail(\'' + w.id + '\')">' +
-          '<b>' + w.id + '</b><span class="chip ' + w.status + '">' + w.status + '</span>' +
-          (w.qcException === 'Y' ? '<span class="chip exc">QC EXCEPTION</span>' : '') +
-          '<div class="meta">' + w.sku + ' \u00b7 ' + w.batchSizeKg + ' kg \u00b7 ' + w.qtyUnits + ' units</div>' +
-          '<div class="meta">' + (w.assignedOperator || 'Unassigned') + (w.linkedBatch ? ' \u00b7 batch ' + w.linkedBatch : '') + '</div>' +
-          '</div>';
-      }).join('');
-    }).withFailureHandler(authFail).listWorkOrders(TOKEN);
-  }
-
-  /* ---------- Detail overlay ---------- */
-  var CURRENT_WO = null;
-  function openDetail(id) {
-    google.script.run.withSuccessHandler(function (d) {
-      CURRENT_WO = d;
-      renderDetail(d);
-      document.getElementById('overlay').classList.add('on');
-    }).withFailureHandler(authFail).getWorkOrderDetail(TOKEN, id);
-  }
-  function closeDetail() { document.getElementById('overlay').classList.remove('on'); loadWorkOrders(); }
-
-  function renderDetail(d) {
-    var h = '<h2 style="margin-top:0">' + d.id + ' <span class="chip ' + d.status + '">' + d.status + '</span></h2>';
-    h += '<div class="meta">' + d.sku + ' \u00b7 ' + d.batchSizeKg + ' kg \u00b7 ' + d.qtyUnits + ' units \u00b7 created by ' + d.createdBy + '</div>';
-    if (d.assignedOperator) h += '<div class="meta">Assigned: ' + d.assignedOperator + '</div>';
-    if (d.notes) h += '<div class="meta">Notes: ' + d.notes + '</div>';
-
-    h += '<h2>Bill of materials</h2><table class="bom"><tr><th>Component</th><th>Needed</th></tr>';
-    d.bom.forEach(function (c) { h += '<tr><td>' + c.name + '</td><td>' + c.needed + ' ' + c.unit + '</td></tr>'; });
-    h += '</table>';
-
-    if (d.status === 'Reserved' || d.status === 'InProgress') {
-      h += '<div class="btnrow">';
-      if (d.status === 'Reserved') h += '<button class="btn green" onclick="doStart()">Start batch</button>';
-      if (d.status === 'InProgress') {
-        h += '<button class="btn primary" onclick="showLogForm()">Log measurement</button>';
-        h += '<button class="btn gold" onclick="doComplete()">Complete batch</button>';
-      }
-      if (ROLE.indexOf('Planner') !== -1 || ROLE.indexOf('Admin') !== -1) h += '<button class="btn red" onclick="doCancel()">Cancel</button>';
-      h += '</div><div id="log-form"></div>';
-    }
-
-    h += '<h2>Measurement log</h2>';
-    if (!d.logs.length) h += '<div class="meta">No measurements logged yet.</div>';
-    else h += d.logs.map(function (l) {
-      return '<div class="shortage-row"><span>' + l.param + ' = ' + l.value + ' ' + l.unit + (l.inSpec === 'N' ? ' <span class="badge-risk">OUT OF SPEC</span>' : '') + '</span><span class="meta">' + l.operator + ' \u00b7 ' + l.when + '</span></div>';
-    }).join('');
-
-    h += '<div id="qrbox"></div>';
-    h += '<div class="btnrow"><button class="btn outline" onclick="downloadWOPdf()">\ud83d\udcc4 Download work order PDF</button></div>';
-    h += '<button class="close" onclick="closeDetail()">Close</button>';
-
-    document.getElementById('detail-sheet').innerHTML = h;
-    var qrDiv = document.getElementById('qrbox');
-    new QRCode(qrDiv, { text: EXEC_URL + '?wo=' + d.id, width: 130, height: 130 });
-  }
-
-  function doStart() {
-    google.script.run.withSuccessHandler(function () { showMsg('ok', 'Batch started.'); openDetail(CURRENT_WO.id); })
-      .withFailureHandler(authFail).startWorkOrder(TOKEN, CURRENT_WO.id);
-  }
-  function showLogForm() {
-    var f = document.getElementById('log-form');
-    f.innerHTML = '<h2>New measurement</h2>' +
-      '<select id="lg-param"><option value="pH">pH</option><option value="Moisture">Moisture %</option><option value="NetWeight">Net weight (g)</option><option value="Foam">Foam (mL)</option><option value="Other">Other</option></select>' +
-      '<input id="lg-value" type="number" step="0.01" placeholder="Value">' +
-      '<input id="lg-unit" placeholder="Unit (optional)">' +
-      '<button class="btn primary" onclick="submitLog()">Save measurement</button>';
-  }
-  function submitLog() {
-    var p = document.getElementById('lg-param').value, v = document.getElementById('lg-value').value, u = document.getElementById('lg-unit').value;
-    if (v === '') { showMsg('err', 'Enter a value.'); return; }
-    google.script.run.withSuccessHandler(function (res) {
-      showMsg(res.inSpec === 'N' ? 'err' : 'ok', res.inSpec === 'N' ? '\u26a0 Out of spec \u2014 supervisor notified.' : '\u2713 Logged.');
-      openDetail(CURRENT_WO.id);
-    }).withFailureHandler(authFail).logMeasurement(TOKEN, CURRENT_WO.id, p, v, u);
-  }
-  function doComplete() {
-    var kg = prompt('Actual batch size (kg)?', CURRENT_WO.batchSizeKg);
-    if (kg === null) return;
-    google.script.run.withSuccessHandler(function (res) {
-      showMsg('ok', '\u2713 Completed \u2014 batch ' + res.batchCode + ' now curing (see Production tab).');
-      closeDetail();
-    }).withFailureHandler(authFail).completeWorkOrder(TOKEN, CURRENT_WO.id, kg);
-  }
-  function doCancel() {
-    if (!confirm('Cancel ' + CURRENT_WO.id + '? Reserved materials will be released.')) return;
-    google.script.run.withSuccessHandler(function () { showMsg('ok', 'Cancelled.'); closeDetail(); })
-      .withFailureHandler(authFail).cancelWorkOrder(TOKEN, CURRENT_WO.id);
-  }
-
-  /* ---------- Branded PDF work order sheet ---------- */
-  function downloadWOPdf() {
-    var d = CURRENT_WO;
-    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
-    var W = 210, M = 18, GREEN = [46, 90, 39], BLUE = [27, 108, 168], GOLD = [212, 160, 23];
-    doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]); doc.rect(0, 0, W, 28, 'F');
-    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]); doc.rect(0, 28, W / 3, 2, 'F');
-    doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]); doc.rect(W / 3, 28, W / 3, 2, 'F');
-    doc.setFillColor(255, 248, 231); doc.rect(2 * W / 3, 28, W / 3, 2, 'F');
-    doc.setTextColor(255, 248, 231); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-    doc.text('ANGAVU SOLUTIONS LTD', M, 13);
-    doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(212, 160, 23);
-    doc.text('Sparkle & Dazzle', M, 19);
-    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-    doc.text('WORK ORDER', W - M, 16, { align: 'right' });
-
-    var y = 40;
-    doc.setTextColor(40, 40, 40); doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold'); doc.text(d.id, M, y); doc.setFont('helvetica', 'normal');
-    doc.text('Status: ' + d.status, W - M, y, { align: 'right' });
-    y += 8;
-    [['SKU', d.sku], ['Batch size', d.batchSizeKg + ' kg'], ['Planned units', d.qtyUnits],
-     ['Created by', d.createdBy], ['Assigned operator', d.assignedOperator || '\u2014'],
-     ['Linked batch code', d.linkedBatch || '\u2014']].forEach(function (r) {
-      doc.text(r[0] + ':', M, y); doc.text(String(r[1]), M + 55, y); y += 6;
-    });
-
-    y += 4;
-    doc.setFillColor(BLUE[0], BLUE[1], BLUE[2]); doc.rect(M, y, W - 2 * M, 8, 'F');
-    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
-    doc.text('BILL OF MATERIALS', M + 3, y + 5.5);
-    y += 8;
-    doc.setTextColor(40, 40, 40); doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
-    d.bom.forEach(function (c, i) {
-      if (i % 2 === 0) { doc.setFillColor(250, 247, 238); doc.rect(M, y, W - 2 * M, 7, 'F'); }
-      doc.text(c.name, M + 3, y + 5);
-      doc.text(String(c.needed) + ' ' + c.unit, W - M - 3, y + 5, { align: 'right' });
-      y += 7;
-    });
-
-    y += 6;
-    doc.setFillColor(GREEN[0], GREEN[1], GREEN[2]); doc.rect(M, y, W - 2 * M, 8, 'F');
-    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold');
-    doc.text('WEIGH-IN SIGN-OFF', M + 3, y + 5.5);
-    y += 12;
-    doc.setTextColor(40, 40, 40); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    doc.text('Weighed by: ______________________     Checked by: ______________________', M, y);
-    y += 10;
-    doc.text('Mixing start: __________   Mixing end: __________   Cure days: ______', M, y);
-
-    var qrCanvas = document.querySelector('#qrbox canvas');
-    if (qrCanvas) {
-      var qrData = qrCanvas.toDataURL('image/png');
-      doc.addImage(qrData, 'PNG', W - M - 32, y + 6, 32, 32);
-      doc.setFontSize(7.5); doc.text('Scan to open on a tablet', W - M - 32, y + 41);
-    }
-
-    doc.setFontSize(8); doc.setTextColor(120, 120, 110);
-    doc.text('Generated by Angavu MES \u00b7 ' + new Date().toLocaleString(), M, 285);
-
-    doc.save(d.id + ' - Work Order.pdf');
-  }
-
-  /* ---------- Boot ---------- */
-  google.script.run.withSuccessHandler(function (cfg) {
-    var ln = document.getElementById('login-name');
-    ln.innerHTML = '<option value="">\u2014 who are you? \u2014</option>';
-    (cfg.userNames || []).forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n; ln.appendChild(o); });
-  }).getConfig();
-
-  if (TOKEN) afterLogin(); else showLock('');
+  window.addEventListener('online', conn); window.addEventListener('offline', conn); conn();
 </script>
 </body>
 </html>
-    
