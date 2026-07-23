@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Angavu MES</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1B6CA8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #1B6CA8; color: #FFF8E7; font-family: Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px;
+  }
+  img.logo { width: 108px; border-radius: 24px; margin-bottom: 16px; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .tag { font-size: 13px; color: #D4A017; margin-bottom: 30px; }
+  .btn {
+    display: block; width: 100%; max-width: 320px; margin: 0 auto 12px;
+    padding: 17px; border-radius: 10px; border: none; cursor: pointer;
+    font-size: 17px; font-weight: 700; text-decoration: none;
+  }
+  .go { background: #D4A017; color: #412402; }
+  .install { background: transparent; color: #FFF8E7; border: 2px solid #FFF8E7; font-size: 14px; padding: 12px; display: none; }
+  .bar { display: flex; height: 6px; width: 100%; max-width: 320px; margin: 26px auto 0; border-radius: 3px; overflow: hidden; }
+  .bar span:nth-child(1){flex:1;background:#D4A017;} .bar span:nth-child(2){flex:1;background:#2E5A27;} .bar span:nth-child(3){flex:1;background:#FFF8E7;}
+  .foot { margin-top: 26px; font-size: 11px; color: #BEDCF0; }
+  #offline { display: none; margin-top: 14px; font-size: 13px; background: #FAEEDA; color: #854F0B; padding: 10px 14px; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+  <img class="logo" src="icon-192.png" alt="Angavu MES">
+  <h1>Angavu MES</h1>
+  <div class="tag">Sparkle &amp; Dazzle &middot; production floor</div>
+
+  <!-- ===== PASTE YOUR /exec URL BELOW, keep the ?app=mes ===== -->
+  <a class="btn go" id="open"
+     href="PASTE-YOUR-NEW-STANDALONE-MES-EXEC-URL-HERE">
+     Open MES &rarr;</a>
+
+  <button class="btn install" id="installBtn">&#11015; Install this app on your device</button>
+
+  <div id="offline"><b>No internet.</b> The MES needs data/Wi-Fi to plan and log batches.</div>
+
+  <div class="bar"><span></span><span></span><span></span></div>
+  <div class="foot">Angavu Solutions Ltd &middot; PO Box 8, Miharati &middot; 0700 767 686</div>
+
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  var deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferredPrompt = e;
+    document.getElementById('installBtn').style.display = 'block';
+  });
+  document.getElementById('installBtn').addEventListener('click', function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function () {
+      deferredPrompt = null; document.getElementById('installBtn').style.display = 'none';
+    });
+  });
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    document.getElementById('installBtn').style.display = 'none';
+  }
+  function conn() {
+    var off = !navigator.onLine;
+    document.getElementById('offline').style.display = off ? 'block' : 'none';
+    document.getElementById('open').style.opacity = off ? 0.5 : 1;
+  }
+  window.addEventListener('online', conn); window.addEventListener('offline', conn); conn();
+</script>
+</body>
+</html>
